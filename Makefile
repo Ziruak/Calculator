@@ -1,19 +1,25 @@
 CC              = gcc -std=c11
-CFLAGS          = -Wall -Wextra #-Werror
+CFLAGS          = `pkg-config --cflags gtk+-3.0` -Wall -Wextra #-Werror
 #-fsanitize=address
 EXTRA_CFLAGS    = 
 #-ffast-math -fdata-sections -ffunction-sections -Wconversion -Wpointer-arith -Wstrict-prototypes -Wundef -pedantic
 TEST_CFLAGS     = -I check/include -L check/Cellar/check/0.15.2/lib -lcheck
 #-I /usr/local/include -L /usr/local/lib -lcheck -pthread -pthread -lrt -lm
-LIB_FLAGS		= -lm
+LIB_FLAGS		= -lm `pkg-config --libs gtk+-3.0`
 OUTPUT_NAME     = calculator
-C_FILES         = stack.c calculator.c
+C_FILES         = stack.c calculator.c gui.c
 TEST_C_FILES	= test.c
 
 all: calculator
 
-calculator:
+text_calculator:
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $(C_FILES) $(LIB_FLAGS) -o $(OUTPUT_NAME)
+
+calculator:
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $(C_FILES) -o $(OUTPUT_NAME) $(LIB_FLAGS)
+
+debug:
+	$(CC) $(CFLAGS) -g -fdiagnostics-color=always $(EXTRA_CFLAGS) $(C_FILES) -o $(OUTPUT_NAME) $(LIB_FLAGS)
 
 clean:
 	rm -f *.o *.info *.gcno *.gcda gcov_report all

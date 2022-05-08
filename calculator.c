@@ -3,9 +3,10 @@
 op parse_op(const char **str) {
     op opr = {INVALID,0.0,0};
     char sym;
-    if (strchr("1234567890",**str) && sscanf(*str,"%lf", &opr.val) > 0) {
+     int scanned = 0;
+    if (strchr("1234567890.",**str) && sscanf(*str,"%lf%n", &opr.val, &scanned) > 0) {
         opr.type = NUMBER;
-        while (strchr("1234567890.",**str)) (*str)++;
+        (*str)+=scanned;
     } else if (sscanf(*str,"%c", &sym) > 0) {
         if (strchr("+-*x^()/mcstal", sym)) {
             switch (sym) {
@@ -47,58 +48,58 @@ op parse_op(const char **str) {
                 (*str)++;
                 break;
                 case 'm':
-                 if (sscanf(*str, "od") >= 2) {
+                 if (sscanf(*str, "mod%n", &scanned) > 0) {
                      opr.type = OP_BIN_MOD;
                      opr.priority = 2;
                      (*str)+=3;
                  }
                  break;
                 case 'c':
-                if (sscanf(*str, "os") >= 2) {
+                if (sscanf(*str, "cos%n", &scanned) > 0) {
                      opr.type = F_COS;
                      opr.priority = 4;
                      (*str)+=3;
                  }
                  break;
                 case 's':
-                if (sscanf(*str, "in") >= 2) {
+                if (sscanf(*str, "sin%n", &scanned) > 0) {
                      opr.type = F_SIN;
                      opr.priority = 4;
                      (*str)+=3;
-                 } else if (sscanf(*str, "qrt ")>=3) {
+                 } else if (sscanf(*str, "sqrt%n", &scanned)>0) {
                      opr.type = F_SQRT;
                      opr.priority = 4;
                      (*str)+=4;
                  } 
                  break;
                 case 't':
-                if (sscanf(*str, "an") >= 2) {
+                if (sscanf(*str, "tan%n", &scanned) > 0) {
                      opr.type = F_TAN;
-                     opr.priority = 2;
+                     opr.priority = 4;
                      (*str)+=3;
                  }
                  break;
                 case 'a':
-                if (sscanf(*str, "sin") >= 3) {
+                if (sscanf(*str, "asin%n", &scanned) > 0) {
                      opr.type = F_ASIN;
                      opr.priority = 4;
                      (*str)+=4;
-                 } else if (sscanf(*str, "cos ")>=3) {
+                 } else if (sscanf(*str, "acos%n", &scanned) > 0) {
                      opr.type = F_ACOS;
                      opr.priority = 4;
                      (*str)+=4;
-                 } else if (sscanf(*str, "tan ")>=3) {
+                 } else if (sscanf(*str, "atan%n", &scanned) > 0) {
                      opr.type = F_ATAN;
                      opr.priority = 4;
                      (*str)+=4;
                  }
                  break;
                  case 'l':
-                 if (sscanf(*str, "n") >= 1) {
+                 if (sscanf(*str, "ln%n", &scanned) > 0) {
                      opr.type = F_LN;
                      opr.priority = 4;
                      (*str)+=2;
-                 } else if (sscanf(*str, "og" )>= 2) {
+                 } else if (sscanf(*str, "log%n", &scanned )> 0) {
                      opr.type = F_LOG;
                      opr.priority = 4;
                      (*str)+=3;
@@ -108,6 +109,8 @@ op parse_op(const char **str) {
         } else if (sym == '\n' || sym == '\0') {
             opr.type = SEQ_END;
         }
+    } else {
+        opr.type = SEQ_END;
     }
     while (**str== ' ') (*str)++;
     return opr;
@@ -140,7 +143,6 @@ int calculate_num(stack *nums, stack *ops) {
         cur_op = s_top(nums);
         calculated = s_pop(nums);
         cur_op.val = -cur_op.val;
-        s_push(nums, cur_op);
     } else if(type == OP_UN_PLUS) {
     } else if (type > OP_BINS && type < OP_END) {
         op temp_op = s_top(nums);
@@ -174,6 +176,7 @@ double calculate(const char* str, double xval) {
     stack operators = {NULL};
     op cur;
     int process = 1;
+    s_push(&operators, (op){BR_OPEN,0.,0});
     while (process) {
         cur = parse_op(&str);
         if (cur.type == INVALID) {
@@ -209,12 +212,4 @@ double calculate(const char* str, double xval) {
     s_clear(&numbers);
     s_clear(&operators);
     return cur.val;
-}
-
-int main() {
-    char inp[256];
-    fgets(inp,256,stdin);
-    double res = calculate(inp,S21_NAN);
-    printf("RESULT: %lf\n", res);
-    return 0;
 }
