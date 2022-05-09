@@ -3,21 +3,33 @@
 op parse_op(const char **str) {
     op opr = {INVALID,0.0,0};
     char sym;
-     int scanned = 0;
+    static char last_sym = '(';
+    int scanned = 0;
     if (strchr("1234567890.",**str) && sscanf(*str,"%lf%n", &opr.val, &scanned) > 0) {
         opr.type = NUMBER;
         (*str)+=scanned;
+        last_sym='0';
     } else if (sscanf(*str,"%c", &sym) > 0) {
         if (strchr("+-*x^()/mcstal", sym)) {
             switch (sym) {
                 case '+': 
+                if (!strchr("+-*^(/m", last_sym)) {
                 opr.type = OP_BIN_PLUS;
                 opr.priority = 1;
+                } else {
+                    opr.type = OP_UN_PLUS;
+                    opr.priority = 5;
+                }
                 (*str)++;
                 break;
                 case '-':
+                if (!strchr("+-*^(/m", last_sym)) {
                 opr.type = OP_BIN_MINUS;
                 opr.priority = 1;
+                } else {
+                    opr.type = OP_UN_MINUS;
+                    opr.priority = 5;
+                }
                 (*str)++;
                 break;
                 case '*': 
@@ -48,69 +60,86 @@ op parse_op(const char **str) {
                 (*str)++;
                 break;
                 case 'm':
-                 if (sscanf(*str, "mod%n", &scanned) > 0) {
+                sscanf(*str, "mod%n", &scanned);
+                 if (scanned == 3) {
                      opr.type = OP_BIN_MOD;
                      opr.priority = 2;
                      (*str)+=3;
                  }
                  break;
                 case 'c':
-                if (sscanf(*str, "cos%n", &scanned) > 0) {
+                sscanf(*str, "cos%n", &scanned);
+                 if (scanned == 3) {
                      opr.type = F_COS;
                      opr.priority = 4;
                      (*str)+=3;
                  }
                  break;
-                case 's':
-                if (sscanf(*str, "sin%n", &scanned) > 0) {
+                 case 's':
+                 sscanf(*str, "sin%n", &scanned);
+                 if (scanned == 3) {
                      opr.type = F_SIN;
                      opr.priority = 4;
                      (*str)+=3;
-                 } else if (sscanf(*str, "sqrt%n", &scanned)>0) {
+                 }
+                 sscanf(*str, "sqrt%n", &scanned);
+                 if (scanned == 4) {
                      opr.type = F_SQRT;
                      opr.priority = 4;
                      (*str)+=4;
                  } 
                  break;
                 case 't':
-                if (sscanf(*str, "tan%n", &scanned) > 0) {
+                sscanf(*str, "tan%n", &scanned);
+                if (scanned == 3) {
                      opr.type = F_TAN;
                      opr.priority = 4;
                      (*str)+=3;
                  }
                  break;
                 case 'a':
-                if (sscanf(*str, "asin%n", &scanned) > 0) {
+                sscanf(*str, "asin%n", &scanned);
+                if (scanned == 4) {
                      opr.type = F_ASIN;
                      opr.priority = 4;
                      (*str)+=4;
-                 } else if (sscanf(*str, "acos%n", &scanned) > 0) {
+                 } 
+                 sscanf(*str, "acos%n", &scanned);
+                 if (scanned == 4) {
                      opr.type = F_ACOS;
                      opr.priority = 4;
                      (*str)+=4;
-                 } else if (sscanf(*str, "atan%n", &scanned) > 0) {
+                 } 
+                 sscanf(*str, "atan%n", &scanned);
+                 if (scanned == 4) {
                      opr.type = F_ATAN;
                      opr.priority = 4;
                      (*str)+=4;
                  }
                  break;
                  case 'l':
-                 if (sscanf(*str, "ln%n", &scanned) > 0) {
+                 sscanf(*str, "ln%n", &scanned);
+                 if (scanned == 2) {
                      opr.type = F_LN;
                      opr.priority = 4;
                      (*str)+=2;
-                 } else if (sscanf(*str, "log%n", &scanned )> 0) {
+                 } 
+                 sscanf(*str, "log%n", &scanned);
+                  if (scanned == 3) {
                      opr.type = F_LOG;
                      opr.priority = 4;
                      (*str)+=3;
                  }
                  break;
             }
+            last_sym = sym;
         } else if (sym == '\n' || sym == '\0') {
             opr.type = SEQ_END;
+            last_sym = '(';
         }
     } else {
         opr.type = SEQ_END;
+        last_sym = '(';
     }
     while (**str== ' ') (*str)++;
     return opr;
@@ -160,15 +189,16 @@ int calculate_num(stack *nums, stack *ops) {
     return calculated;
 }
 
-void calculate_seq(stack *nums, stack *ops) {
+int calculate_seq(stack *nums, stack *ops) {
     op cur = s_top(ops);
+    op_type res = INVALID;
     if (cur.type == BR_CLOSE) {
         s_pop(ops);
-        int res;
         while((res = calculate_num(nums,ops)) && res != BR_OPEN);
         if ((cur = s_top(ops)).type > F_START && cur.type < F_END)
             calculate_num(nums,ops);
     }
+    return res;
 }
 
 double calculate(const char* str, double xval) {
@@ -181,6 +211,7 @@ double calculate(const char* str, double xval) {
         cur = parse_op(&str);
         if (cur.type == INVALID) {
             process = 0;
+            s_push(&numbers,(op){INVALID,S21_NAN,0});
         }
         if (cur.type == NUMBER) {
             s_push(&numbers, cur);

@@ -19,7 +19,7 @@ calculator:
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $(C_FILES) -o $(OUTPUT_NAME) $(LIB_FLAGS)
 
 debug:
-	$(CC) $(CFLAGS) -g -fdiagnostics-color=always $(EXTRA_CFLAGS) $(C_FILES) -o $(OUTPUT_NAME) $(LIB_FLAGS)
+	$(CC) $(CFLAGS) -D name=SDEBUG $(EXTRA_CFLAGS) $(C_FILES) -o $(OUTPUT_NAME) $(LIB_FLAGS)
 
 clean:
 	rm -f *.o *.info *.gcno *.gcda gcov_report all
