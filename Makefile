@@ -7,7 +7,7 @@ TEST_CFLAGS     = -I check/include -L check/Cellar/check/0.15.2/lib -lcheck
 #-I /usr/local/include -L /usr/local/lib -lcheck -pthread -pthread -lrt -lm
 LIB_FLAGS		= -lm `pkg-config --libs gtk+-3.0`
 OUTPUT_NAME     = calculator
-C_FILES         = stack.c calculator.c gui.c
+C_FILES         = stack.c calculator.c f_graph.c gui.c
 TEST_C_FILES	= test.c
 
 all: calculator
