@@ -1,56 +1,56 @@
 CC              = gcc -std=c11
-CFLAGS          = `pkg-config --cflags gtk+-3.0` -Wall -Wextra #-Werror
+CFLAGS          = -c -Wall -Wextra #-Werror
+GUI_CFLAGS		= -c `pkg-config --cflags gtk+-3.0`
 #-fsanitize=address
 EXTRA_CFLAGS    = 
 #-ffast-math -fdata-sections -ffunction-sections -Wconversion -Wpointer-arith -Wstrict-prototypes -Wundef -pedantic
-TEST_CFLAGS     = -I check/include -L check/Cellar/check/0.15.2/lib -lcheck
+TEST_CFLAGS     = -c -I./check/include -pthread
 #-I /usr/local/include -L /usr/local/lib -lcheck -pthread -pthread -lrt -lm
-LIB_FLAGS		= -lm `pkg-config --libs gtk+-3.0`
+
+LIB_FLAGS		= -L. -lcalculator -lm
+GUI_LIB_FLAGS	= `pkg-config --libs gtk+-3.0`
+TEST_LIB_FLAGS	= -L check/Cellar/check/0.15.2/lib -lcheck
+
 OUTPUT_NAME     = calculator
-C_FILES         = stack.c calculator.c f_graph.c gui.c
+TEST_OUTPUT_NAME= calculator_tests
+
+C_FILES         = stack.c calculator.c
+GUI_C_FILES		= f_graph.c gui.c
 TEST_C_FILES	= test.c
 
 all: calculator
 
-text_calculator:
-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $(C_FILES) $(LIB_FLAGS) -o $(OUTPUT_NAME)
 
-calculator:
-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $(C_FILES) -o $(OUTPUT_NAME) $(LIB_FLAGS)
+calculator: libcalculator.a
+	$(CC) $(GUI_CFLAGS) $(EXTRA_CFLAGS) $(GUI_C_FILES)
+	$(CC) libcalculator.a gui.o f_graph.o -o $(OUTPUT_NAME) $(LIB_FLAGS) $(GUI_LIB_FLAGS)
+	make clean
 
-debug:
-	$(CC) $(CFLAGS) -D name=SDEBUG $(EXTRA_CFLAGS) $(C_FILES) -o $(OUTPUT_NAME) $(LIB_FLAGS)
+libcalculator.a:
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $(C_FILES)
+	ar rcs libcalculator.a calculator.o stack.o
+	make clean
 
 clean:
 	rm -f *.o *.info *.gcno *.gcda gcov_report all
 
-test: calculator.a
-	$(CC) -c $(TEST_C_FILES) $(TEST_CFLAGS)
-	$(CC) -o $(OUTPUT_NAME) *.o -L . calculator.a $(TEST_CFLAGS)
-	$(CC) -o $(OUTPUT_NAME) --coverage $(CFLAGS) $(EXTRA_CFLAGS) *.c $(TEST_CFLAGS) -lcheck
-	./$(OUTPUT_NAME)
+test: libcalculator.a
+	$(CC) $(TEST_CFLAGS) $(EXTRA_CFLAGS) $(TEST_C_FILES)
+	$(CC) libcalculator.a test*.o -o $(TEST_OUTPUT_NAME) $(LIB_FLAGS) $(TEST_LIB_FLAGS)
+	./$(TEST_OUTPUT_NAME)
 	rm -f *.o all
 
-calculator.a:
-	$(CC) -c $(CFLAGS) $(EXTRA_CFLAGS) $(C_FILES) -L. -I.
-	ar rcs calculator.a *.o
-	ar rcs libcalculator.a *.o
-	make clean
-
-gcov_report: test
-#	$(CC) -o $(OUTPUT_NAME) --coverage $(CFLAGS) $(EXTRA_CFLAGS) *.c $(TEST_CFLAGS)
-#	./$(OUTPUT_NAME)
+gcov_report:
+	$(CC) $(CFLAGS) -fprofile-arcs -ftest-coverage $(EXTRA_CFLAGS) $(C_FILES)
+	$(CC) $(TEST_CFLAGS) -fprofile-arcs -ftest-coverage $(EXTRA_CFLAGS) $(TEST_C_FILES)
+	$(CC) calculator.o stack.o test*.o -o $(TEST_OUTPUT_NAME) --coverage -L. -lm $(TEST_LIB_FLAGS)
+	./$(TEST_OUTPUT_NAME)
 	lcov -t "gcov_report" -o gcov_report.info -c -d .
 	genhtml -o report gcov_report.info
-	open ./report/index.html
+#	.open /report/index.html
 	make clean
-
-rebuild: 
-	rm -f $(OUTPUT_NAME)
-	make clean
-	make all
 
 full_clean:
-	rm -f $(OUTPUT_NAME)
+	rm -f $(OUTPUT_NAME) $(TEST_OUTPUT_NAME)
 	rm -f *.o *.a *.info *.gcno *.gcda all
 	rm -rf report

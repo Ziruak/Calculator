@@ -49,14 +49,19 @@ typedef struct stack_op {
     node *_lst;
 } stack;
 
+// returns 1 if stack empty, 0 otherwise
 int s_empty(stack *s);
 
+// returns op with invalid op_type if stack is empty, op otherwise
 op s_top(stack *s);
 
+// returns 0 if stack empty, 1 otherwise
 int s_pop(stack *s);
 
+// pushes el into stack
 void s_push(stack *s, op el);
 
+// clears stack
 void s_clear(stack *s);
 
 #endif

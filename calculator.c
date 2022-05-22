@@ -65,6 +65,7 @@ op parse_op(const char **str) {
                      opr.type = OP_BIN_MOD;
                      opr.priority = 2;
                      (*str)+=3;
+                     scanned = 0;
                  }
                  break;
                 case 'c':
@@ -73,6 +74,7 @@ op parse_op(const char **str) {
                      opr.type = F_COS;
                      opr.priority = 4;
                      (*str)+=3;
+                     scanned = 0;
                  }
                  break;
                  case 's':
@@ -81,12 +83,14 @@ op parse_op(const char **str) {
                      opr.type = F_SIN;
                      opr.priority = 4;
                      (*str)+=3;
+                     scanned = 0;
                  }
                  sscanf(*str, "sqrt%n", &scanned);
                  if (scanned == 4) {
                      opr.type = F_SQRT;
                      opr.priority = 4;
                      (*str)+=4;
+                     scanned = 0;
                  } 
                  break;
                 case 't':
@@ -95,26 +99,30 @@ op parse_op(const char **str) {
                      opr.type = F_TAN;
                      opr.priority = 4;
                      (*str)+=3;
+                     scanned = 0;
                  }
                  break;
                 case 'a':
                 sscanf(*str, "asin%n", &scanned);
-                if (scanned == 4) {
+                if (scanned == 4 ) {
                      opr.type = F_ASIN;
                      opr.priority = 4;
                      (*str)+=4;
+                     scanned = 0;
                  } 
                  sscanf(*str, "acos%n", &scanned);
                  if (scanned == 4) {
                      opr.type = F_ACOS;
                      opr.priority = 4;
                      (*str)+=4;
+                     scanned = 0;
                  } 
                  sscanf(*str, "atan%n", &scanned);
                  if (scanned == 4) {
                      opr.type = F_ATAN;
                      opr.priority = 4;
                      (*str)+=4;
+                     scanned = 0;
                  }
                  break;
                  case 'l':
@@ -123,12 +131,14 @@ op parse_op(const char **str) {
                      opr.type = F_LN;
                      opr.priority = 4;
                      (*str)+=2;
+                     scanned = 0;
                  } 
                  sscanf(*str, "log%n", &scanned);
                   if (scanned == 3) {
                      opr.type = F_LOG;
                      opr.priority = 4;
                      (*str)+=3;
+                     scanned = 0;
                  }
                  break;
             }
@@ -183,9 +193,15 @@ int calculate_num(stack *nums, stack *ops) {
         cur_op = s_top(nums);
         calculated = s_pop(nums);
         cur_op.val = funs[type - F_START - 1](cur_op.val);
+        if (!(cur_op.val == cur_op.val)) calculated = 0;
     }
     if (calculated) calculated = type;
-    if (cur_op.type == NUMBER) s_push(nums, cur_op);
+    if (cur_op.type == NUMBER) {
+        if (cur_op.val == cur_op.val)
+            s_push(nums, cur_op);
+        else
+            calculated = 0;
+    }
     return calculated;
 }
 
@@ -195,7 +211,7 @@ int calculate_seq(stack *nums, stack *ops) {
     if (cur.type == BR_CLOSE) {
         s_pop(ops);
         while((res = calculate_num(nums,ops)) && res != BR_OPEN);
-        if ((cur = s_top(ops)).type > F_START && cur.type < F_END)
+        if ((cur = s_top(ops)).type > F_START && cur.type < F_END && res)
             calculate_num(nums,ops);
     }
     return res;
@@ -205,13 +221,13 @@ double calculate(const char* str, double xval) {
     stack numbers = {NULL};
     stack operators = {NULL};
     op cur;
-    int process = 1;
+    int process = 1, errno = 1;
     s_push(&operators, (op){BR_OPEN,0.,0});
-    while (process) {
+    while (process && errno) {
         cur = parse_op(&str);
         if (cur.type == INVALID) {
             process = 0;
-            s_push(&numbers,(op){INVALID,S21_NAN,0});
+            errno =  0;
         }
         if (cur.type == NUMBER) {
             s_push(&numbers, cur);
@@ -222,7 +238,7 @@ double calculate(const char* str, double xval) {
         } else if (cur.type > OP_START && cur.type < OP_END) {
             if (s_top(&operators).priority >= cur.priority) {
                 s_push(&operators, (op){BR_CLOSE,0.0,0});
-                calculate_seq(&numbers, &operators);
+                errno = calculate_seq(&numbers, &operators);
                 s_push(&operators, (op){BR_OPEN,0.0,0});
             }
             s_push(&operators, cur);
@@ -230,16 +246,18 @@ double calculate(const char* str, double xval) {
             s_push(&operators, cur);
         } else if (cur.type == BR_CLOSE) {
             s_push(&operators, cur);
-            calculate_seq(&numbers, &operators);
+            errno = calculate_seq(&numbers, &operators);
         } else if (cur.type > F_START && cur.type < F_END) {
             s_push(&operators, cur);
         } else if (cur.type == SEQ_END) {
             s_push(&operators, (op){BR_CLOSE,0.0,0});
-            calculate_seq(&numbers, &operators);
+            errno = calculate_seq(&numbers, &operators);
             process = 0;
         }
+        
     }
     cur = s_top(&numbers);
+    if (!errno || cur.type == INVALID) cur.val = S21_NAN;
     s_clear(&numbers);
     s_clear(&operators);
     return cur.val;
